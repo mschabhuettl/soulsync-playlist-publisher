@@ -42,13 +42,13 @@ Python 3.12, pytest 9.1.1, requests 2.34.2 and cryptography 50.0.2. Compose moun
 permissions/config paths and GitHub workflow structure checked. Independent
 container integration review completed.
 
-Prepared tests/container_smoke.py for CI: actual image process as 3007:3007,
+Passed tests/container_smoke.py in GitHub Actions (Linux amd64): actual image process as 3007:3007,
 read-only root and source DB/config mounts, live WAL visibility through adapter
 and actual --list entrypoint, existing Fernet key, unchanged DB/WAL/SHM/config,
-atomic independent copies with ownership/mode verification. Not executed locally:
-Docker is unavailable. CI must pass this before publishing an image.
+atomic independent copies with ownership/mode verification. Docker was unavailable
+in the editing workspace; this check ran against the actual image on GitHub.
 
-Not tested: actual Docker runtime, installed NAS permissions, live Navidrome
+Not tested: installed NAS permissions, live Navidrome
 accounts/scans, Spotify provider access, SABnzbd/Prowlarr downloads or real audio
 playback. Fake audio bytes and simulated HTTP responses are sufficient for the
 copy/identity tests but do not replace the one-playlist live test in README-DE.md.
@@ -64,6 +64,13 @@ on Debian Bookworm. Linux libc renameat2 is required for exclusive atomic copy
 publication. It does not import SoulSync and uses a separate writable state
 directory. The original SoulSync image remains unchanged.
 
-At preparation time no GitHub repository or registry image has been created.
-Publication awaits repository creation and a successful CI run. Public registry
-access additionally requires the resulting GHCR package to be public.
+Published and verified on 2026-10-06:
+Repository: https://github.com/mschabhuettl/soulsync-playlist-publisher
+Build: https://github.com/mschabhuettl/soulsync-playlist-publisher/actions/runs/37435314735
+Source commit: 384f8af2e1afb5d88771c760b26ebb1f4ffd1736
+145 tests and Docker smoke test passed; both CI jobs succeeded.
+Image: ghcr.io/mschabhuettl/soulsync-playlist-publisher:latest
+Immutable tag: sha-384f8af2e1afb5d88771c760b26ebb1f4ffd1736
+Index digest: sha256:25441fa7882201cb7dbac9909a45eddd01f520a34dd96d2bbfde7f45b418c47e
+Linux amd64 and arm64 manifests present; anonymous registry access succeeded.
+Additional unknown/unknown manifests carry build attestations, not runtimes.

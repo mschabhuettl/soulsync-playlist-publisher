@@ -17,7 +17,7 @@ SoulSyncs Bibliotheksanzeige bleibt gemeinsam. Dieses Projekt ergänzt die Datei
 
 ## Container
 
-Das vorgesehene Image heißt `ghcr.io/mschabhuettl/soulsync-playlist-publisher:latest`. Es ist erst nach einem erfolgreichen GitHub-Actions-Lauf verfügbar. Das Repository enthält den vollständigen Build; das Vorhandensein des Dockerfiles allein bedeutet noch keine veröffentlichte Image-Version.
+Das öffentliche Image `ghcr.io/mschabhuettl/soulsync-playlist-publisher:latest` ist für Linux AMD64 und ARM64 verfügbar. Der erste Build hat 145 Tests und den tatsächlichen Container-Test bestanden. Der Registry-Zugriff ohne GitHub-Anmeldung wurde geprüft.
 
 Der Prozess läuft standardmäßig als UID/GID `3007:3007`. Bei einem abweichenden Konto `user:` in Compose anpassen. `PUID` und `PGID` werden vom Zusatzcontainer nicht ausgewertet. Er benötigt keinen Docker-Socket und keinen eingehenden Port.
 
@@ -47,7 +47,7 @@ Der Container-Smoke-Test benötigt einen laufenden Docker-Daemon. Er verwendet n
 
 GitHub Actions führt die Tests und den Container-Smoke-Test vor der Veröffentlichung aus. Ein Push nach `main` erzeugt `latest` und einen vollständigen Commit-Tag `sha-…`. Tags wie `v0.1.0` erzeugen zusätzlich ein Image-Tag `0.1.0`. Das Image wird für `linux/amd64` und `linux/arm64` gebaut; der Container-Smoke-Test läuft auf amd64. Für ein reproduzierbares Deployment nach dem ersten Build einen Commit-Tag oder den Registry-Digest verwenden.
 
-GHCR verwendet in Actions das automatisch bereitgestellte `GITHUB_TOKEN` mit `packages: write`; es muss kein eigener Upload-Token im Repository gespeichert werden. Sobald das GHCR-Paket nach dem ersten erfolgreichen Build öffentlich freigegeben ist, sind Downloads ohne GitHub-Login möglich. Der Workflow selbst ändert die Sichtbarkeit des Pakets nicht; ein öffentliches Repository allein macht das Container-Paket nicht automatisch öffentlich.
+GHCR verwendet in Actions das automatisch bereitgestellte `GITHUB_TOKEN` mit `packages: write`; es muss kein eigener Upload-Token im Repository gespeichert werden. Das GHCR-Paket dieses Repositorys ist öffentlich und kann ohne GitHub-Login heruntergeladen werden. Bei einem Fork die Paket-Sichtbarkeit separat prüfen; der Workflow ändert sie nicht.
 
 ## Grenzen
 

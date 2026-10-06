@@ -29,13 +29,13 @@ Navidrome, SoulSync und Publisher müssen Musik unter denselben absoluten Pfaden
 
 ## Image beziehen
 
-Nach dem ersten erfolgreichen GitHub-Actions-Build ist das Image unter folgendem Namen verfügbar:
+Das erfolgreich gebaute öffentliche Image ist unter folgendem Namen verfügbar:
 
 ```text
 ghcr.io/mschabhuettl/soulsync-playlist-publisher:latest
 ```
 
-Sobald der erste Build erfolgreich veröffentlicht und das GHCR-Paket auf öffentlich gestellt wurde, kann das Image ohne GitHub-Login heruntergeladen werden. Ein öffentliches Repository allein garantiert noch kein öffentliches Container-Paket. Solange der Build oder die Paketfreigabe fehlt, ist der anonyme Download noch nicht verfügbar.
+Das Image kann ohne GitHub-Login heruntergeladen werden. Der erste Build sowie der anonyme Registry-Zugriff sind geprüft.
 
 ## Compose ergänzen
 
@@ -115,4 +115,4 @@ Zum Anhalten `soulsync-publisher` stoppen oder seinen Dienst aus der Compose-App
 
 Wenn SoulSync selbst neu erstellt wird, die Compose-App als Ganzes erneut bereitstellen, damit der Publisher wieder die neue Netzwerkverbindung von SoulSync übernimmt.
 
-Ein echter NAS-Test steht noch aus. Die lokale Testsuite prüft unter anderem persönliche Track-IDs, unabhängige Kopien, unveränderte unvollständige Playlists und den Scheduler. Der GitHub-Build muss zusätzlich den tatsächlichen Container-Test bestehen, bevor ein Image hochgeladen wird.
+Ein echter NAS-Test steht noch aus. Die lokale Testsuite prüft unter anderem persönliche Track-IDs, unabhängige Kopien, unveränderte unvollständige Playlists und den Scheduler. Der GitHub-Build hat zusätzlich den tatsächlichen Container-Test bestanden.
