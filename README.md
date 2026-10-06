@@ -25,7 +25,7 @@ SoulSync's library view and matching state remain shared. This project handles p
 ghcr.io/mschabhuettl/soulsync-playlist-publisher:latest
 ```
 
-The image is public and available for `linux/amd64` and `linux/arm64`. No GitHub login is required to pull it. The first build passed 145 tests and an actual container integration test. Anonymous registry access was verified.
+The image is public and available for `linux/amd64` and `linux/arm64`. No GitHub login is required to pull it. The automatic-setup build passed 158 tests and an actual container integration test. Anonymous registry access was verified.
 
 The publisher process runs as UID/GID `3007:3007` by default. The automatic-setup Compose example starts its entrypoint as root, prepares only the publisher configuration/state mount roots, and then permanently switches to `PUID:PGID`. Set these variables to the ownership used by your media files. It needs no Docker socket, web interface, or published port. Existing installations using `user: "3007:3007"` and a prepared configuration remain supported.
 

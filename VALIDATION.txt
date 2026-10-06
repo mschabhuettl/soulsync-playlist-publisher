@@ -1,7 +1,7 @@
 Personal SoulSync/Navidrome playlist publisher - independent Docker sidecar
 Prepared: 2026-10-06
 
-145 tests passed in one combined run (0.23 seconds).
+158 tests passed in GitHub Actions, including 13 first-start setup tests.
 Run command: python -m pytest -q tests
 
 Coverage:
@@ -28,6 +28,12 @@ accounts, state-owner binding and invalid shared output roots.
 31 service tests: default dry-run, explicit apply, one-shot forwarding, valid
 environment settings, sequential execution, immediate first run, timed retries,
 heartbeat errors/staleness, failed-run health state, termination and child reaping.
+
+13 bootstrap tests: initial configuration, file permissions, existing-config preservation,
+invalid rules, creation races, symlink refusal, UID/GID validation and privilege
+dropping restricted to publisher directories. Actual Docker smoke additionally
+verified root-to-3007 startup, empty config/state directories, readable generated
+configuration and preservation on restart.
 
 Additional actual-schema check from the earlier standalone version: created a disposable database through pristine
 upstream SoulSync MusicDatabase at commit
@@ -66,11 +72,11 @@ directory. The original SoulSync image remains unchanged.
 
 Published and verified on 2026-10-06:
 Repository: https://github.com/mschabhuettl/soulsync-playlist-publisher
-Build: https://github.com/mschabhuettl/soulsync-playlist-publisher/actions/runs/37435314735
-Source commit: 384f8af2e1afb5d88771c760b26ebb1f4ffd1736
-145 tests and Docker smoke test passed; both CI jobs succeeded.
+Build: https://github.com/mschabhuettl/soulsync-playlist-publisher/actions/runs/37437816989
+Source commit: b7d4251d36b2665702ad8c10cf563418e362f3d2
+158 tests and Docker smoke test passed; both CI jobs succeeded.
 Image: ghcr.io/mschabhuettl/soulsync-playlist-publisher:latest
-Immutable tag: sha-384f8af2e1afb5d88771c760b26ebb1f4ffd1736
-Index digest: sha256:25441fa7882201cb7dbac9909a45eddd01f520a34dd96d2bbfde7f45b418c47e
+Immutable tag: sha-b7d4251d36b2665702ad8c10cf563418e362f3d2
+Index digest: sha256:f194b2acb4f29dead1d41b5ac8bba731856256914c419e9b499841b1d37a848e
 Linux amd64 and arm64 manifests present; anonymous registry access succeeded.
 Additional unknown/unknown manifests carry build attestations, not runtimes.
