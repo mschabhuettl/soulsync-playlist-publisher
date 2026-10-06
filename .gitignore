@@ -1,0 +1,16 @@
+__pycache__/
+.pytest_cache/
+.ruff_cache/
+.venv/
+*.py[cod]
+*.zip
+.env
+.env.*
+*.db
+*.db-*
+*.sqlite*
+.encryption_key
+playlist-publisher.json
+state/
+config/
+dist/

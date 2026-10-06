@@ -1,0 +1,72 @@
+# Merge under services: in the existing SoulSync Compose stack.
+# Keep the existing soulsync service and its network configuration.
+# Adapt /srv host paths, profile directories, UID/GID and timezone to your setup.
+services:
+  soulsync-publisher:
+    image: ghcr.io/mschabhuettl/soulsync-playlist-publisher:latest
+    container_name: soulsync-publisher
+    user: "3007:3007"
+    init: true
+    restart: unless-stopped
+    stop_grace_period: 30s
+    network_mode: "service:soulsync"
+    depends_on:
+      soulsync:
+        condition: service_started
+    environment:
+      TZ: Europe/Vienna
+      MODE: dry-run
+      INTERVAL_SECONDS: "300"
+      CONFIG_PATH: /config/playlist-publisher.json
+    read_only: true
+    cap_drop: [ALL]
+    security_opt:
+      - no-new-privileges:true
+    tmpfs:
+      - /tmp:rw,noexec,nosuid,size=16m,mode=1777
+    volumes:
+      - type: bind
+        source: /srv/soulsync/publisher/config
+        target: /config
+        read_only: true
+        bind:
+          create_host_path: false
+      - type: bind
+        source: /srv/soulsync/publisher/state
+        target: /state
+        bind:
+          create_host_path: false
+      - type: bind
+        source: /srv/soulsync/config
+        target: /app/config
+        read_only: true
+        bind:
+          create_host_path: false
+      - type: bind
+        source: /srv/soulsync/data
+        target: /app/data
+        read_only: true
+        bind:
+          create_host_path: false
+      - type: bind
+        source: /srv/downloads/soulsync
+        target: /app/Transfer
+        read_only: true
+        bind:
+          create_host_path: false
+      - type: bind
+        source: /srv/music
+        target: /music
+        read_only: true
+        bind:
+          create_host_path: false
+      - type: bind
+        source: /srv/music/Alice
+        target: /music/Alice
+        bind:
+          create_host_path: false
+      - type: bind
+        source: /srv/music/Bob
+        target: /music/Bob
+        bind:
+          create_host_path: false

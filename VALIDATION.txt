@@ -1,0 +1,69 @@
+Personal SoulSync/Navidrome playlist publisher - independent Docker sidecar
+Prepared: 2026-10-06
+
+145 tests passed in one combined run (0.23 seconds).
+Run command: python -m pytest -q tests
+
+Coverage:
+65 Navidrome transport-fixture tests: personal account visibility, complete
+paginated inventory, scan races/deadlines, exact ordered song IDs including
+duplicates, marked ownership, private publication, name collisions, fresh
+path verification, unchanged-playlist no-op, failures without credential leaks.
+
+23 filesystem tests: allowed roots, foreign-to-personal independent copies,
+Shared reuse, exact recording metadata and duration, symlink escapes, original
+preservation, destination collisions, source changes, no-replace atomic rename,
+inventory indexing and bounded hashing.
+
+15 source tests: read-only SQLite, exact profile/playlist ownership, existing
+Fernet key use, no service-account fallback, completed Transfer download
+provenance, provider/metadata matching, malformed schema, blocked manual
+matches, database-before-config-file service settings.
+
+11 runner tests: no filesystem/music/playlist changes during dry-run, two-run
+copy/scan/publish sequence, private and shared IDs, incomplete/empty/blocked
+playlists preserved, ordered duplicates, profile selection, distinct personal
+accounts, state-owner binding and invalid shared output roots.
+
+31 service tests: default dry-run, explicit apply, one-shot forwarding, valid
+environment settings, sequential execution, immediate first run, timed retries,
+heartbeat errors/staleness, failed-run health state, termination and child reaping.
+
+Additional actual-schema check from the earlier standalone version: created a disposable database through pristine
+upstream SoulSync MusicDatabase at commit
+dabb7b0ef5fbb5bac142802e8e84f48585237572, with all configuration, cache and database
+paths redirected into a temporary directory. The standalone reader correctly
+loaded a personal mirrored playlist and a completed /app/Transfer download
+without a Navidrome library row. The reader itself never imports SoulSync or
+initializes/migrates its database. The pristine upstream worktree remains clean.
+
+Python 3.12 syntax parsed for all application and test modules. Runtime test host:
+Python 3.12, pytest 9.1.1, requests 2.34.2 and cryptography 50.0.2. Compose mount
+permissions/config paths and GitHub workflow structure checked. Independent
+container integration review completed.
+
+Prepared tests/container_smoke.py for CI: actual image process as 3007:3007,
+read-only root and source DB/config mounts, live WAL visibility through adapter
+and actual --list entrypoint, existing Fernet key, unchanged DB/WAL/SHM/config,
+atomic independent copies with ownership/mode verification. Not executed locally:
+Docker is unavailable. CI must pass this before publishing an image.
+
+Not tested: actual Docker runtime, installed NAS permissions, live Navidrome
+accounts/scans, Spotify provider access, SABnzbd/Prowlarr downloads or real audio
+playback. Fake audio bytes and simulated HTTP responses are sufficient for the
+copy/identity tests but do not replace the one-playlist live test in README-DE.md.
+
+Known behavior: global SoulSync library/UI remains shared; this publisher
+corrects personal file availability and target playlists afterward. Matching is
+strict; uncertain versions stay pending. A playlist publishes only when all
+source members are ready. Downloads remain SoulSync's responsibility. No
+garbage collection, file deletion, playlist deletion or source DB mutation.
+
+The sidecar installs pinned requests and cryptography versions, with Python 3.12
+on Debian Bookworm. Linux libc renameat2 is required for exclusive atomic copy
+publication. It does not import SoulSync and uses a separate writable state
+directory. The original SoulSync image remains unchanged.
+
+At preparation time no GitHub repository or registry image has been created.
+Publication awaits repository creation and a successful CI run. Public registry
+access additionally requires the resulting GHCR package to be public.

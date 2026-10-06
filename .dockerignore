@@ -1,0 +1,8 @@
+**
+!Dockerfile
+!requirements.txt
+!publish_playlists.py
+!soul_source.py
+!navidrome_api.py
+!publisher_files.py
+!run_service.py

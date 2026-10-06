@@ -1,0 +1,21 @@
+{
+  "version": 1,
+  "soul_database": "/app/data/music_library.db",
+  "soul_config": "/app/config/config.json",
+  "state_path": "/state/state.json",
+  "playlist_prefix": "SoulSync · ",
+  "max_copies_per_run": 10,
+  "max_runtime_seconds": 220,
+  "request_scan_after_copy": true,
+  "source_roots": ["/music/Alice", "/music/Bob", "/music/Shared", "/app/Transfer"],
+  "profiles": {
+    "alice": {
+      "read_roots": ["/music/Alice", "/music/Shared"],
+      "write_root": "/music/Alice"
+    },
+    "bob": {
+      "read_roots": ["/music/Bob", "/music/Shared"],
+      "write_root": "/music/Bob"
+    }
+  }
+}
