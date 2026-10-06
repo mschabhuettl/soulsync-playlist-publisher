@@ -27,26 +27,33 @@ ghcr.io/mschabhuettl/soulsync-playlist-publisher:latest
 
 The image is public and available for `linux/amd64` and `linux/arm64`. No GitHub login is required to pull it. The first build passed 145 tests and an actual container integration test. Anonymous registry access was verified.
 
-The container runs as UID/GID `3007:3007` by default. Change `user:` in Compose if your media files use different ownership. This image does not interpret `PUID` or `PGID`. It needs no Docker socket, web interface, or published port.
+The publisher process runs as UID/GID `3007:3007` by default. The automatic-setup Compose example starts its entrypoint as root, prepares only the publisher configuration/state mount roots, and then permanently switches to `PUID:PGID`. Set these variables to the ownership used by your media files. It needs no Docker socket, web interface, or published port. Existing installations using `user: "3007:3007"` and a prepared configuration remain supported.
 
 ## Installation
 
-### Prepare the configuration
+### Configure automatic first-start setup
 
-Clone or download this repository. The commands below use the sample host paths from [compose.yaml](compose.yaml); adapt them and the UID/GID before running them. Run the directory and file installation commands with sufficient privileges on the Docker host.
+Merge the publisher service from [compose.yaml](compose.yaml) into your existing SoulSync stack. Adapt its host paths, `PUID`, `PGID`, timezone, and `PROFILE_RULES` to your installation. No manual `mkdir`, `chown`, or JSON file creation is needed for a new installation with this Compose example.
 
-```bash
-install -d -o 3007 -g 3007 -m 750 \
-  /srv/soulsync/publisher/config \
-  /srv/soulsync/publisher/state
-
-install -o 3007 -g 3007 -m 640 playlist-publisher.example.json \
-  /srv/soulsync/publisher/config/playlist-publisher.json
+```yaml
+environment:
+  PUID: "3007"
+  PGID: "3007"
+  MODE: dry-run
+  PROFILE_RULES: >-
+    {"alice":{"read_roots":["/music/Alice","/music/Shared"],"write_root":"/music/Alice"},
+     "bob":{"read_roots":["/music/Bob","/music/Shared"],"write_root":"/music/Bob"}}
 ```
 
-Edit the installed JSON file so the profile names exactly match your SoulSync profiles. Set each profile's `read_roots` and `write_root`, and adapt `source_roots` to the existing music and completed-download directories. Each personal output folder must be separate from the other user's accessible roots.
+Docker creates the publisher's two bind-mount directories if missing. The entrypoint changes ownership of those directory roots only, drops privileges, validates the profile rules, and atomically creates `/config/playlist-publisher.json` as the media user. It never recursively changes permissions or takes ownership of SoulSync data or music. Existing music and SoulSync directories must already exist.
 
-No passwords need to be added to this file. The publisher reads the personal Navidrome credentials already stored by SoulSync and decrypts them using SoulSync's existing encryption key. Keep your configuration when upgrading.
+The JSON profile names must exactly match SoulSync. Each `read_roots` list includes that user's personal library and any shared libraries. `write_root` must point to their personal library. Source roots are derived from these readable roots plus `/app/Transfer`; optional `SOURCE_ROOTS` can supply an explicit JSON array.
+
+**First-start settings never overwrite an existing configuration.** Subsequent changes to `PROFILE_RULES` or `SOURCE_ROOTS` do not replace the saved JSON. Edit `/config/playlist-publisher.json` for later configuration changes and restart the publisher. Configuration and state persist in the mounted host directories.
+
+Passwords are read from SoulSync's existing settings and encryption key. Do not place credentials in `PROFILE_RULES`.
+
+For a manually managed installation, [playlist-publisher.example.json](playlist-publisher.example.json) remains available. Pre-create writable state with the desired ownership, mount the existing configuration read-only if preferred, and run directly with `user: "3007:3007"`. The additional startup capabilities are unnecessary in that mode.
 
 ### Check Navidrome access
 
@@ -58,7 +65,7 @@ Navidrome, SoulSync, and the publisher must see music at the same absolute paths
 
 ### Add the service to your existing stack
 
-Merge the `soulsync-publisher` service from [compose.yaml](compose.yaml) under the existing stack's `services:` key. Keep your current SoulSync service and network configuration. Adapt the sample `/srv/...` host paths, music folder names, UID/GID, and timezone.
+Merge the `soulsync-publisher` service from [compose.yaml](compose.yaml) under the existing stack's `services:` key. Keep your current SoulSync service and network configuration. Adapt the sample `/srv/...` host paths, music folder names, `PUID`/`PGID`, and timezone.
 
 The example expects the existing service to be named `soulsync`. Both services must be in the same Compose project because `network_mode: service:soulsync` shares SoulSync's network namespace. The publisher does not need another IP address.
 
@@ -69,7 +76,7 @@ The example expects the existing service to be named `soulsync`. Both services m
 | `/app/Transfer` | Read-only | Completed downloads used as copy sources |
 | `/music` | Read-only | Existing music, including the shared library |
 | `/music/Alice`, `/music/Bob` | Read/write | Personal copies |
-| `/config` | Read-only | Publisher configuration |
+| `/config` | Read/write | Publisher configuration, created only when absent |
 | `/state` | Read/write | Publisher state, lock, and last report |
 
 Mount the entire SoulSync data directory, not just `music_library.db`. Current changes may still be in its WAL, and the encryption key may be in the same directory. Read-only access to a live WAL database requires readable WAL/SHM files. If they are temporarily unavailable during startup, the run fails and the scheduler retries later. Keep SoulSync running; do not delete database files to resolve this condition.
@@ -86,12 +93,12 @@ docker logs --tail 200 soulsync-publisher
 
 `copy` indicates a planned personal copy; `ready` means the correct account can already access the file. `missing`, `ambiguous`, and `blocked` explain why a playlist is not ready.
 
-A dry run does not change music, SoulSync's database, Navidrome playlists, or persistent publisher state. The scheduler writes only a temporary heartbeat for Docker's healthcheck.
+First-start setup may create the publisher configuration even in dry-run mode. The dry run itself does not change music, SoulSync's database, Navidrome playlists, or persistent publisher state. The scheduler also writes a temporary heartbeat for Docker's healthcheck.
 
 List the source playlists and their IDs:
 
 ```bash
-docker exec soulsync-publisher python3 -B /opt/publisher/run_service.py --list
+docker exec soulsync-publisher python3 -B /opt/publisher/container_entrypoint.py --list
 ```
 
 ### Test one playlist
@@ -99,7 +106,7 @@ docker exec soulsync-publisher python3 -B /opt/publisher/run_service.py --list
 Choose a small playlist owned by Alice that includes a track available only in Bob's library. Replace `123` with the source playlist ID:
 
 ```bash
-docker exec soulsync-publisher python3 -B /opt/publisher/run_service.py \
+docker exec soulsync-publisher python3 -B /opt/publisher/container_entrypoint.py \
   --profile alice --playlist-id 123 --apply
 ```
 
@@ -124,6 +131,9 @@ A playlist may need several runs: copy files, wait for a Navidrome scan, then pu
 
 | Variable | Default | Meaning |
 |---|---|---|
+| `PUID`, `PGID` | `3007` | Media user/group after root initialization |
+| `PROFILE_RULES` | unset | Profile JSON used only if the configuration is absent |
+| `SOURCE_ROOTS` | derived | Optional JSON array of permitted source roots for first setup |
 | `MODE` | `dry-run` | `dry-run` plans changes; `apply` copies files and publishes playlists |
 | `INTERVAL_SECONDS` | `300` | Delay after each completed run; minimum 30 seconds |
 | `CONFIG_PATH` | `/config/playlist-publisher.json` | Publisher configuration file |

@@ -5,7 +5,8 @@ services:
   soulsync-publisher:
     image: ghcr.io/mschabhuettl/soulsync-playlist-publisher:latest
     container_name: soulsync-publisher
-    user: "3007:3007"
+    # Root is used only to initialize publisher directories, then privileges are dropped.
+    user: "0:0"
     init: true
     restart: unless-stopped
     stop_grace_period: 30s
@@ -14,12 +15,18 @@ services:
       soulsync:
         condition: service_started
     environment:
+      PUID: "3007"
+      PGID: "3007"
       TZ: Europe/Vienna
       MODE: dry-run
       INTERVAL_SECONDS: "300"
       CONFIG_PATH: /config/playlist-publisher.json
+      PROFILE_RULES: >-
+        {"alice":{"read_roots":["/music/Alice","/music/Shared"],"write_root":"/music/Alice"},
+         "bob":{"read_roots":["/music/Bob","/music/Shared"],"write_root":"/music/Bob"}}
     read_only: true
     cap_drop: [ALL]
+    cap_add: [CHOWN, SETUID, SETGID]
     security_opt:
       - no-new-privileges:true
     tmpfs:
@@ -28,14 +35,13 @@ services:
       - type: bind
         source: /srv/soulsync/publisher/config
         target: /config
-        read_only: true
         bind:
-          create_host_path: false
+          create_host_path: true
       - type: bind
         source: /srv/soulsync/publisher/state
         target: /state
         bind:
-          create_host_path: false
+          create_host_path: true
       - type: bind
         source: /srv/soulsync/config
         target: /app/config

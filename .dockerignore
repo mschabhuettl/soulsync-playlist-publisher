@@ -6,3 +6,4 @@
 !navidrome_api.py
 !publisher_files.py
 !run_service.py
+!container_entrypoint.py

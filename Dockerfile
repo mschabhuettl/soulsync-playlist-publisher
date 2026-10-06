@@ -16,10 +16,10 @@ WORKDIR /opt/publisher
 COPY requirements.txt ./
 RUN python3 -m pip install --no-cache-dir --only-binary=:all: -r requirements.txt \
     && mkdir -p /config /state \
-    && chown 3007:3007 /state
-COPY publish_playlists.py soul_source.py navidrome_api.py publisher_files.py run_service.py ./
+    && chown 3007:3007 /config /state
+COPY publish_playlists.py soul_source.py navidrome_api.py publisher_files.py run_service.py container_entrypoint.py ./
 
 USER 3007:3007
 HEALTHCHECK --interval=30s --timeout=5s --start-period=30s --retries=3 \
-    CMD ["python3", "-B", "/opt/publisher/run_service.py", "healthcheck"]
-ENTRYPOINT ["python3", "-B", "/opt/publisher/run_service.py"]
+    CMD ["python3", "-B", "/opt/publisher/container_entrypoint.py", "healthcheck"]
+ENTRYPOINT ["python3", "-B", "/opt/publisher/container_entrypoint.py"]

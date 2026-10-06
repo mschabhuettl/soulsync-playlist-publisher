@@ -225,11 +225,42 @@ def smoke(image: str) -> None:
             listed = json.loads(command([*docker, image, '--config', '/config/publisher.json', '--list']))
             assert listed == [{'profile': 'alice', 'playlists': [
                 {'id': 42, 'name': 'Only committed in WAL', 'tracks': 1}]}], listed
+
+            # First start with empty host directories, as Docker bind mounts
+            # would create them. Only three capabilities are needed to prepare
+            # publisher-owned directories and permanently drop root privileges.
+            auto_config = root / 'auto-config'
+            auto_config.mkdir(mode=0o755)
+            rules = json.dumps(config['profiles'])
+            automatic = ['docker', 'run', '--rm', '--network', 'none', '--read-only',
+                         '--cap-drop', 'ALL', '--cap-add', 'CHOWN', '--cap-add', 'SETUID',
+                         '--cap-add', 'SETGID', '--security-opt', 'no-new-privileges:true',
+                         '--user', '0:0', '--tmpfs', '/tmp:rw,nosuid,nodev,size=64m',
+                         '--env', 'PUID=3007', '--env', 'PGID=3007',
+                         '--env', 'PROFILE_RULES=' + rules,
+                         *mount(root / 'source-data', '/app/data'),
+                         *mount(root / 'source-config', '/app/config'),
+                         *mount(auto_config, '/config', readonly=False),
+                         *mount(root / 'state', '/state', readonly=False),
+                         *mount(root / 'music', '/music'),
+                         *mount(root / 'music/Alice', '/music/Alice', readonly=False),
+                         *mount(root / 'transfer', '/app/Transfer')]
+            assert json.loads(command([*automatic, image, '--list'])) == listed
+            inspect_config = "from pathlib import Path; import json; p=Path('/config/playlist-publisher.json'); s=p.stat(); print(json.dumps({'text':p.read_text(),'uid':s.st_uid,'gid':s.st_gid,'mode':s.st_mode & 0o777}))"
+            inspection_command = [*automatic, '--user', '3007:3007', '--entrypoint', 'python3',
+                                  image, '-B', '-c', inspect_config]
+            generated_before = json.loads(command(inspection_command))
+            assert json.loads(generated_before['text'])['profiles'] == config['profiles']
+            assert (generated_before['uid'], generated_before['gid']) == (3007, 3007)
+            assert generated_before['mode'] == 0o640
+            assert json.loads(command([*automatic, '--env', 'PROFILE_RULES=invalid', image, '--list'])) == listed
+            assert json.loads(command(inspection_command)) == generated_before
             after = json.loads(command([*docker, '--entrypoint', 'python3', image,
                                         '-B', '-c', SOURCE_FINGERPRINT]))
             assert after == before, 'Read-only source database, WAL, SHM or config contents changed'
             print('PASS: image dependencies, Linux atomic copy, UID/GID 3007, read-only mounts,')
             print('      live WAL visibility, Fernet credentials, actual --list entrypoint, and unchanged source files')
+            print('      automatic first-start configuration, UID/GID drop, and preserved existing configuration')
         finally:
             writer.close()
             # GitHub runners are not root. Restore ownership so tempfile can

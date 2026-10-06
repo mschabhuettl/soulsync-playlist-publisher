@@ -2,24 +2,25 @@
 
 Der Dienst `soulsync-publisher` läuft neben deiner vorhandenen SoulSync-Instanz. SoulSync behält das Original-Image, seine bisherige Netzwerkadresse und alle bisherigen Mounts. Der neue Container teilt seine Netzwerkverbindung und benötigt keine zusätzliche IP. Beide Dienste müssen deshalb in derselben Compose-App stehen; der vorhandene Dienst muss `soulsync` heißen.
 
-## Verzeichnisse vorbereiten
+## Automatische Ersteinrichtung
 
-Auf dem NAS die eigenen Ordner des Publishers erstellen:
+Übernimm den Dienst aus `compose.yaml` in deinen bestehenden Stack. Passe die Hostpfade, `PUID`, `PGID`, Zeitzone und die Profilzuordnung unter `PROFILE_RULES` an. Die Vorlage verwendet `alice`, `bob`, Alice, Bob und Shared als Beispiele.
 
-```bash
-install -d -o 3007 -g 3007 -m 750 \
-  /srv/soulsync/publisher/config \
-  /srv/soulsync/publisher/state
+```yaml
+environment:
+  PUID: "3007"
+  PGID: "3007"
+  MODE: dry-run
+  PROFILE_RULES: >-
+    {"alice":{"read_roots":["/music/Alice","/music/Shared"],"write_root":"/music/Alice"},
+     "bob":{"read_roots":["/music/Bob","/music/Shared"],"write_root":"/music/Bob"}}
 ```
 
-Die Datei `playlist-publisher.example.json` aus diesem Repository nach `publisher/config/playlist-publisher.json` kopieren. Wenn du im heruntergeladenen Repository-Verzeichnis stehst:
+Docker legt die eigenen Hostordner für Konfiguration und Zustand bei Bedarf an. Der Container startet zur Einrichtung als root, setzt ausschließlich die Eigentümer dieser beiden Ordner und wechselt anschließend auf `PUID:PGID`. Er legt die Konfigurationsdatei als dieser Benutzer an. An vorhandener Musik und SoulSync-Daten werden keine Rechte geändert. Die vorhandenen Musik- und SoulSync-Verzeichnisse müssen bereits existieren.
 
-```bash
-install -o 3007 -g 3007 -m 640 playlist-publisher.example.json \
-  /srv/soulsync/publisher/config/playlist-publisher.json
-```
+Eine vorhandene `playlist-publisher.json` wird niemals überschrieben. `PROFILE_RULES` und das optionale JSON-Array `SOURCE_ROOTS` werden nur beim ersten Start ohne Konfiguration verwendet. Spätere Änderungen direkt in der gespeicherten JSON vornehmen und den Publisher neu starten. Die Standardquellen ergeben sich aus allen `read_roots` plus `/app/Transfer`.
 
-Die Vorlage verwendet die Beispielprofile `alice` und `bob` sowie die Ordner Alice, Bob und Shared. Passe die Profilnamen an die tatsächlich in SoulSync vorhandenen Namen und die Ordner an deine Bibliotheken an. Die Hostpfade `/srv/...`, UID/GID `3007:3007` und Zeitzone in `compose.yaml` sind Beispiele und müssen zu deinem System passen. Es werden keine Passwörter eingetragen; der Publisher liest die bereits in SoulSync gespeicherten persönlichen Navidrome-Zugänge und deren vorhandenen Schlüssel. Die Datei bei späteren Updates nicht ungeprüft überschreiben.
+Passwörter liest der Publisher aus SoulSync samt vorhandenem Verschlüsselungsschlüssel. Es werden keine Zugangsdaten in Compose eingetragen. Manuell vorbereitete Installationen mit `user: "3007:3007"` und einer vorhandenen JSON funktionieren weiterhin.
 
 ## Navidrome prüfen
 
@@ -41,7 +42,7 @@ Das Image kann ohne GitHub-Login heruntergeladen werden. Der erste Build sowie d
 
 Den Dienst aus `compose.yaml` unter das vorhandene `services:` setzen. Keine zweite SoulSync-App anlegen und keinen zweiten `services:`-Schlüssel einfügen. Den vorhandenen SoulSync-Dienst und seine Netzwerkkonfiguration beibehalten.
 
-Der Zusatzcontainer verwendet `user: "3007:3007"`; SoulSync selbst behält seine bestehenden `PUID`/`PGID`-Einstellungen. `MODE: dry-run` zunächst beibehalten. Die erste Ausführung startet sofort nach dem Containerstart, die weiteren jeweils fünf Minuten nach Abschluss des letzten Durchlaufs.
+Der Zusatzcontainer verwendet für die kurze Ersteinrichtung `user: "0:0"` und wechselt danach auf die IDs aus `PUID`/`PGID`. SoulSync selbst behält seine bisherigen Einstellungen. `MODE: dry-run` zunächst beibehalten. Die erste Ausführung startet sofort nach dem Containerstart, die weiteren jeweils fünf Minuten nach Abschluss des letzten Durchlaufs.
 
 | Mount im Publisher | Zugriff | Zweck |
 |---|---|---|
@@ -51,7 +52,7 @@ Der Zusatzcontainer verwendet `user: "3007:3007"`; SoulSync selbst behält seine
 | `/music` | nur lesen | bestehende Musik, einschließlich Shared |
 | `/music/Alice` | lesen und schreiben | persönliche Kopien für alice |
 | `/music/Bob` | lesen und schreiben | persönliche Kopien für bob |
-| `/config` | nur lesen | Publisher-Konfiguration |
+| `/config` | lesen und schreiben | Publisher-Konfiguration, wird nur bei Bedarf angelegt |
 | `/state` | lesen und schreiben | eigener Zustand, Sperre und letzter Bericht |
 
 Der gesamte Datenordner muss gemountet werden. Nur `music_library.db` zu mounten würde aktuelle Daten im SQLite-WAL und gegebenenfalls den Schlüssel auslassen. Ein schreibgeschützter Live-Zugriff setzt vorhandene lesbare WAL/SHM-Dateien voraus. Fehlen diese kurz beim Start, wird der Lauf mit Fehler beendet und später erneut versucht. SoulSync weiterlaufen lassen; keine Dateien oder Datenbankeinträge zum Beheben dieses Startzustands löschen.
@@ -68,12 +69,12 @@ Nach dem Bereitstellen der ergänzten App:
 docker logs --tail 200 soulsync-publisher
 ```
 
-`copy` zeigt eine geplante persönliche Kopie; `ready` eine bereits mit dem richtigen Konto nutzbare Datei. `missing`, `ambiguous` oder `blocked` erklären, warum eine Playlist noch nicht vollständig ist. Der Probelauf verändert keine Musik, SoulSync-Datenbank oder Navidrome-Playlist. Nur das temporäre Lebenszeichen für Docker wird geschrieben; der Publisher-Zustand bleibt unverändert.
+`copy` zeigt eine geplante persönliche Kopie; `ready` eine bereits mit dem richtigen Konto nutzbare Datei. `missing`, `ambiguous` oder `blocked` erklären, warum eine Playlist noch nicht vollständig ist. Der Probelauf verändert keine Musik, SoulSync-Datenbank oder Navidrome-Playlist. Beim allerersten Start kann die Konfigurationsdatei angelegt werden; anschließend wird nur das temporäre Lebenszeichen für Docker geschrieben. Der Publisher-Zustand bleibt im Probelauf unverändert.
 
 Quellplaylists samt IDs separat anzeigen:
 
 ```bash
-docker exec soulsync-publisher python3 -B /opt/publisher/run_service.py --list
+docker exec soulsync-publisher python3 -B /opt/publisher/container_entrypoint.py --list
 ```
 
 ## Einen Fall anwenden
@@ -81,7 +82,7 @@ docker exec soulsync-publisher python3 -B /opt/publisher/run_service.py --list
 Eine kleine Testplaylist im Profil alice auswählen, die einen nur bei Bob vorhandenen Titel enthält. Im Befehl `123` durch die angezeigte ID ersetzen:
 
 ```bash
-docker exec soulsync-publisher python3 -B /opt/publisher/run_service.py \
+docker exec soulsync-publisher python3 -B /opt/publisher/container_entrypoint.py \
   --profile alice --playlist-id 123 --apply
 ```
 
